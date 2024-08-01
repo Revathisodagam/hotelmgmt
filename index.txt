@@ -1,33 +1,131 @@
 hi this is an index file
 
 
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE hibernate-configuration PUBLIC
-		"-//Hibernate/Hibernate Configuration DTD 3.0//EN"
-		"http://hibernate.sourceforge.net/hibernate-configuration-3.0.dtd">
-<hibernate-configuration>
-   <session-factory>
-       <property name="hibernate.connection.driver_class">com.mysql.cj.jdbc.Driver</property>
-       <property name="hibernate.connection.url">jdbc:mysql://127.0.0.1:3306/test</property>
-       <property name="hibernate.connection.username">root</property>
-       <property name="connection.password">mysql</property>
-       <property name="connection.pool_size">10</property
-     <property name="hibernate.dialect">org.hibernate.dialect.MySQLDialect</property>
-       <property name="show_sql">true</property>
-       <property name="hibernate.hbm2ddl.auto">create</property>              
-       <mapping resource="employee.hbm.xml"/>       
-   </session-factory>
-</hibernate-configuration>
---------------------------------------------------------
-<?xml version="1.0" encoding="utf-8"?>
-<!DOCTYPE hibernate-mapping PUBLIC
-"-//Hibernate/Hibernate Mapping DTD//EN"
-"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
-<hibernate-mapping>
-  <class name="Employee" table="hibernate_create_insert_update_delete">
-     <id name="id" type="int" column="id"> </id>
-     <property name="firstName" column="first_name" type="string"/>
-     <property name="lastName" column="last_name" type="string"/>
-     <property name="salary" column="salary" type="int"/>
-  </class>
-</hibernate-mapping>
+import java.util.List;
+import org.hibernate.HibernateException;
+import org.hibernate.SQLQuery;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.cfg.Configuration;
+
+public class Hibernate_CRUD_Operations {
+
+    private static SessionFactory factory;
+
+    // Obtains the session factory
+    public static void getSessionFactory() {
+        try {
+            Configuration conf = new Configuration().configure();
+            StandardServiceRegistryBuilder builder = new StandardServiceRegistryBuilder()
+                    .applySettings(conf.getProperties());
+            factory = conf.buildSessionFactory(builder.build());
+        } catch (Throwable ex) {
+            System.out.println("Exception is: " + ex);
+        }
+    }
+
+    public static void main(String[] args) {
+        getSessionFactory();
+        Hibernate_CRUD_Operations obj = new Hibernate_CRUD_Operations();
+
+        // Creating Employee objects
+        Employee emp1 = new Employee(101, "Charan", "Kumar", 50000);
+        Employee emp2 = new Employee(102, "Rahul", "Nivas", 50000);
+        Employee emp3 = new Employee(103, "Ravi", "Prakash", 50000);
+
+        // Insert records into the database
+        obj.insertIntoDatabase(emp1);
+        obj.insertIntoDatabase(emp2);
+        obj.insertIntoDatabase(emp3);
+
+        // Display the records from the database
+        obj.displayRecords();
+
+        // Display the data using Native SQL
+        obj.displayRecords_NativeSQL();
+
+        // Update the record
+        obj.updateRecord(102, 55000);
+
+        // Delete record
+        obj.deleteRecord(103);
+    }
+
+    // Inserts a record into the database
+    public void insertIntoDatabase(Employee emp) {
+        try (Session session = factory.openSession()) {
+            Transaction tx = session.beginTransaction();
+            session.save(emp);
+            tx.commit();
+            System.out.println("Given record is inserted in the database successfully.");
+        } catch (HibernateException ex) {
+            System.out.println("Exception is: " + ex);
+        }
+    }
+
+    // Displays the list of records from the database
+    public void displayRecords() {
+        try (Session sessionObj = factory.openSession()) {
+            List<Employee> empList = sessionObj.createQuery("FROM Employee", Employee.class).list();
+            System.out.println("List of records in the db are: ");
+            for (Employee emp : empList) {
+                System.out.println(emp);
+            }
+        } catch (HibernateException ex) {
+            System.out.println("Exception is: " + ex);
+        }
+    }
+
+    // Display the records with Native SQL
+    public void displayRecords_NativeSQL() {
+        try (Session sessionObj = factory.openSession()) {
+            String str = "SELECT * FROM Employee WHERE Salary = 50000";
+            SQLQuery<Employee> query = sessionObj.createSQLQuery(str);
+            query.addEntity(Employee.class);
+            List<Employee> empLst = query.list();
+            System.out.println("List of records: ");
+            for (Employee emp : empLst) {
+                System.out.println(emp);
+            }
+        } catch (HibernateException ex) {
+            System.out.println("Exception is: " + ex);
+        }
+    }
+
+    // Update the record in the database
+    public void updateRecord(int id, int salary) {
+        try (Session sessionObj = factory.openSession()) {
+            Transaction tx = sessionObj.beginTransaction();
+            Employee emp = sessionObj.get(Employee.class, id);
+            if (emp != null) {
+                emp.setSalary(salary);
+                sessionObj.update(emp);
+                tx.commit();
+                System.out.println("Given record is updated in the db successfully...");
+            } else {
+                System.out.println("Employee with ID " + id + " not found.");
+            }
+        } catch (HibernateException ex) {
+            System.out.println("Exception is: " + ex);
+        }
+    }
+
+    // Delete a record from the database
+    public void deleteRecord(int id) {
+        try (Session sessionObj = factory.openSession()) {
+            Transaction tx = sessionObj.beginTransaction();
+            Employee emp = sessionObj.get(Employee.class, id);
+            if (emp != null) {
+                sessionObj.delete(emp);
+                tx.commit();
+                System.out.println("Given record is deleted from the db successfully...");
+            } else {
+                System.out.println("Employee with ID " + id + " not found.");
+            }
+        } catch (HibernateException ex) {
+            System.out.println("Exception is: " + ex);
+        }
+    }
+}
